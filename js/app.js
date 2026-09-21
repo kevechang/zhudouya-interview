@@ -5,6 +5,8 @@
   // Storage & State Management
   // -------------------------------------------------------------
   const STORAGE_KEY = 'zdy.progress.v1';
+  const MODE_STORAGE_KEY = 'zdy.mode.v1';
+  const BANNER_STORAGE_KEY = 'zdy.banner.plain_hint.v1';
 
   function getProgress() {
     try {
@@ -36,6 +38,52 @@
     } catch (e) {
       console.warn('Failed to clear progress:', e);
     }
+  }
+
+  function getMode() {
+    try {
+      const mode = localStorage.getItem(MODE_STORAGE_KEY);
+      return mode === 'plain' ? 'plain' : 'pro';
+    } catch (e) {
+      console.warn('Failed to read mode from localStorage:', e);
+      return 'pro';
+    }
+  }
+
+  function setMode(mode) {
+    try {
+      localStorage.setItem(MODE_STORAGE_KEY, mode === 'plain' ? 'plain' : 'pro');
+    } catch (e) {
+      console.warn('Failed to save mode to localStorage:', e);
+    }
+  }
+
+  function renderModeSwitcher() {
+    const currentMode = getMode();
+    return `
+      <div class="mode-switcher" role="radiogroup" aria-label="展示模式">
+        <button type="button" class="mode-switcher-btn ${currentMode === 'pro' ? 'active' : ''}" data-mode="pro" aria-label="专业版">专业版</button>
+        <button type="button" class="mode-switcher-btn ${currentMode === 'plain' ? 'active' : ''}" data-mode="plain" aria-label="通俗版">通俗版</button>
+      </div>
+    `;
+  }
+
+  function bindModeSwitcherEvents(onSwitch) {
+    const btns = appEl.querySelectorAll('.mode-switcher-btn');
+    btns.forEach(btn => {
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        const targetMode = this.getAttribute('data-mode');
+        if (targetMode && targetMode !== getMode()) {
+          setMode(targetMode);
+          if (typeof onSwitch === 'function') {
+            onSwitch(targetMode);
+          } else {
+            renderRoute();
+          }
+        }
+      };
+    });
   }
 
   function getDeckStats(cardsList) {
@@ -219,6 +267,8 @@
     const cardsMap = window.ZDY_CARDS || {};
     const overall = getOverallStats();
     const commonStats = getDeckStats(cardsMap.common || []);
+    const mode = getMode();
+    const bannerDismissed = localStorage.getItem(BANNER_STORAGE_KEY) === 'dismissed';
 
     const redCompanies = companies.filter(c => c.priority === 'red');
     const yellowCompanies = companies.filter(c => c.priority === 'yellow');
@@ -236,6 +286,9 @@
               <span class="company-match" title="匹配度 ${c.match}/5">${stars}</span>
             </div>
             <div class="company-role">${escapeHtml(c.role)}</div>
+            ${(mode === 'plain' && c.plain && c.plain.roleInOneLine) ? `
+              <div class="company-plain-role-sub">💡 人话：${escapeHtml(c.plain.roleInOneLine)}</div>
+            ` : ''}
             <div class="company-meta-row">
               <span class="meta-chip">📍 ${escapeHtml(c.location)}</span>
               <span class="meta-chip">💰 ${salaryStr}</span>
@@ -251,10 +304,33 @@
     }
 
     appEl.innerHTML = `
+      <header class="navbar home-navbar">
+        <div class="navbar-brand">
+          <span class="brand-icon">📦</span>
+          <span class="brand-title">秋招备战</span>
+        </div>
+        <div class="navbar-right">
+          ${renderModeSwitcher()}
+        </div>
+      </header>
+
       <div class="container">
+        ${(!bannerDismissed && mode === 'pro') ? `
+          <div class="mode-tip-banner" id="mode-tip-banner">
+            <div class="mode-tip-banner-content">
+              <span class="mode-tip-banner-icon">💡</span>
+              <span class="mode-tip-banner-text">看不懂专业术语？右上角切<strong>「通俗版」</strong></span>
+            </div>
+            <div class="mode-tip-banner-actions">
+              <button class="btn-banner-switch" id="btn-banner-switch">立即切换</button>
+              <button class="mode-tip-banner-close" id="btn-close-banner" aria-label="关闭提示">✕</button>
+            </div>
+          </div>
+        ` : ''}
+
         <header class="home-header">
           <h1 class="home-title">秋招面试备战 · 供应链/跨境电商</h1>
-          <p class="home-subtitle">物流管理 2027 届 · 8 个目标岗位</p>
+          <p class="home-subtitle">物流管理 2027 届 · 8 个目标岗位${mode === 'plain' ? ' <span class="mode-badge-plain">通俗版已开启</span>' : ''}</p>
         </header>
 
         <!-- Overall Progress -->
@@ -306,7 +382,10 @@
       </div>
     `;
 
-    // Attach reset button event
+    bindModeSwitcherEvents(() => {
+      renderHomeView();
+    });
+
     const resetBtn = document.getElementById('btn-reset-progress');
     if (resetBtn) {
       resetBtn.onclick = function (e) {
@@ -315,6 +394,26 @@
           clearAllProgress();
           renderHomeView();
         });
+      };
+    }
+
+    const closeBannerBtn = document.getElementById('btn-close-banner');
+    if (closeBannerBtn) {
+      closeBannerBtn.onclick = function (e) {
+        e.stopPropagation();
+        try { localStorage.setItem(BANNER_STORAGE_KEY, 'dismissed'); } catch (_) {}
+        const bannerEl = document.getElementById('mode-tip-banner');
+        if (bannerEl) bannerEl.remove();
+      };
+    }
+
+    const bannerSwitchBtn = document.getElementById('btn-banner-switch');
+    if (bannerSwitchBtn) {
+      bannerSwitchBtn.onclick = function (e) {
+        e.stopPropagation();
+        try { localStorage.setItem(BANNER_STORAGE_KEY, 'dismissed'); } catch (_) {}
+        setMode('plain');
+        renderHomeView();
       };
     }
   }
@@ -331,22 +430,39 @@
       return;
     }
 
+    const mode = getMode();
+    const isPlain = mode === 'plain' && company.plain;
+
     const salaryStr = `${company.salary[0]}–${company.salary[1]}K`;
     const stars = '★'.repeat(company.match) + '☆'.repeat(5 - company.match);
+
+    const displayAbout = isPlain ? company.plain.about : company.about;
+    const whyFitList = isPlain ? company.plain.whyFit : company.whyFit;
+    const concernsList = isPlain ? company.plain.concerns : company.concerns;
+    const dutiesList = isPlain ? company.plain.duties : company.duties;
+    const requirementsList = isPlain ? company.plain.requirements : company.requirements;
 
     appEl.innerHTML = `
       <header class="navbar">
         <a href="#/" class="navbar-back">&larr; 返回首页</a>
         <div class="navbar-title">${escapeHtml(company.short)}</div>
-        <div class="navbar-right"></div>
+        <div class="navbar-right">
+          ${renderModeSwitcher()}
+        </div>
       </header>
 
       <div class="container">
         <!-- Hero Header -->
         <div class="company-header-hero">
-          <h2 class="company-hero-title">${escapeHtml(company.role)}</h2>
+          <div class="company-hero-role-row">
+            <h2 class="company-hero-title">${escapeHtml(company.role)}</h2>
+            ${isPlain ? '<span class="badge-plain-mode">通俗模式</span>' : ''}
+          </div>
+          ${isPlain ? `
+            <div class="company-plain-role-badge">💡 一句话岗位定位：${escapeHtml(company.plain.roleInOneLine)}</div>
+          ` : ''}
           <div class="company-hero-fullname">${escapeHtml(company.name)}</div>
-          <p class="company-hero-desc">${escapeHtml(company.about)}</p>
+          <p class="company-hero-desc">${escapeHtml(displayAbout)}</p>
           <div class="company-hero-meta">
             <span class="meta-chip">📍 ${escapeHtml(company.location)}</span>
             <span class="meta-chip">💰 ${salaryStr}</span>
@@ -373,28 +489,28 @@
           <div class="info-section">
             <div class="info-section-title">✨ 为什么匹配（优势剖析）</div>
             <ul class="bullet-list">
-              ${company.whyFit.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+              ${whyFitList.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
             </ul>
           </div>
 
           <div class="info-section">
             <div class="info-section-title" style="color: var(--accent-red);">⚠️ 面试官可能质疑的点</div>
             <ul class="bullet-list concerns-list">
-              ${company.concerns.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+              ${concernsList.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
             </ul>
           </div>
 
           <div class="info-section">
-            <div class="info-section-title">📌 岗位职责（JD 原文）</div>
+            <div class="info-section-title">📌 岗位职责（${isPlain ? '通俗人话版' : 'JD 原文'}）</div>
             <ul class="bullet-list">
-              ${company.duties.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+              ${dutiesList.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
             </ul>
           </div>
 
           <div class="info-section">
-            <div class="info-section-title">🎓 任职要求（JD 原文）</div>
+            <div class="info-section-title">🎓 任职要求（${isPlain ? '通俗人话版' : 'JD 原文'}）</div>
             <ul class="bullet-list">
-              ${company.requirements.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+              ${requirementsList.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
             </ul>
           </div>
 
@@ -413,8 +529,19 @@
           <div>
             ${(company.study.must || []).map(item => `
               <div class="study-item-card">
-                <div class="study-item-topic">${escapeHtml(item.topic)}</div>
-                <div class="study-item-note">${escapeHtml(item.note)}</div>
+                <div class="study-item-topic">
+                  ${escapeHtml(item.topic)}
+                  ${(isPlain && item.plainNote) ? '<span class="badge-plain-study">通俗笔记</span>' : ''}
+                </div>
+                <div class="study-item-note">
+                  ${(isPlain && item.plainNote) ? `<strong>💡 人话速记：</strong>${escapeHtml(item.plainNote)}` : escapeHtml(item.note)}
+                </div>
+                ${(isPlain && item.plainNote && item.note) ? `
+                  <details class="study-item-pro-details">
+                    <summary>查看专业版考点解析</summary>
+                    <div class="study-pro-text">${escapeHtml(item.note)}</div>
+                  </details>
+                ` : ''}
                 ${item.link ? `<div class="study-item-link">🔗 与简历连接: ${escapeHtml(item.link)}</div>` : ''}
               </div>
             `).join('')}
@@ -427,8 +554,19 @@
             <div>
               ${company.study.nice.map(item => `
                 <div class="study-item-card">
-                  <div class="study-item-topic">${escapeHtml(item.topic)}</div>
-                  <div class="study-item-note">${escapeHtml(item.note)}</div>
+                  <div class="study-item-topic">
+                    ${escapeHtml(item.topic)}
+                    ${(isPlain && item.plainNote) ? '<span class="badge-plain-study">通俗笔记</span>' : ''}
+                  </div>
+                  <div class="study-item-note">
+                    ${(isPlain && item.plainNote) ? `<strong>💡 人话速记：</strong>${escapeHtml(item.plainNote)}` : escapeHtml(item.note)}
+                  </div>
+                  ${(isPlain && item.plainNote && item.note) ? `
+                    <details class="study-item-pro-details">
+                      <summary>查看专业版考点解析</summary>
+                      <div class="study-pro-text">${escapeHtml(item.note)}</div>
+                    </details>
+                  ` : ''}
                   ${item.link ? `<div class="study-item-link">🔗 与简历连接: ${escapeHtml(item.link)}</div>` : ''}
                 </div>
               `).join('')}
@@ -443,6 +581,10 @@
         </div>
       </div>
     `;
+
+    bindModeSwitcherEvents(() => {
+      renderCompanyView(slug);
+    });
 
     // Tab switching event
     const tabBtns = appEl.querySelectorAll('.tab-btn[data-tab]');
@@ -503,12 +645,15 @@
     const currentCard = filtered[currentCardIndex];
     const deckTitle = isCommon ? '通用必备题' : (company ? company.short : '面试闪卡');
     const backUrl = isCommon ? '#/' : `#/c/${deckSlug}`;
+    const mode = getMode();
+    const isPlain = mode === 'plain';
 
     appEl.innerHTML = `
       <header class="navbar">
         <a href="${backUrl}" class="navbar-back">&larr; 返回</a>
         <div class="navbar-title">${escapeHtml(deckTitle)}</div>
         <div class="navbar-right">
+          ${renderModeSwitcher()}
           <button class="btn-shuffle" id="btn-shuffle" title="打乱题目顺序">🔀 打乱</button>
         </div>
       </header>
@@ -543,6 +688,7 @@
                 <div class="card-face-header">
                   <div class="card-tag-group">
                     <span class="badge-cat">${escapeHtml(currentCard.cat)}</span>
+                    ${isPlain ? '<span class="badge-plain-mode">通俗模式</span>' : ''}
                     ${currentCard.en ? '<span class="badge-en">EN 英语题</span>' : ''}
                   </div>
                   <div>
@@ -552,7 +698,14 @@
                 </div>
 
                 <div class="card-body">
-                  <div class="card-question">${escapeHtml(currentCard.q)}</div>
+                  ${isPlain ? `
+                    <div class="card-question-plain-wrapper">
+                      <div class="card-question-plain">${escapeHtml(currentCard.qp || currentCard.q)}</div>
+                      <div class="card-question-original">原题：${escapeHtml(currentCard.q)}</div>
+                    </div>
+                  ` : `
+                    <div class="card-question">${escapeHtml(currentCard.q)}</div>
+                  `}
                 </div>
 
                 <div class="card-face-footer">
@@ -565,6 +718,7 @@
                 <div class="card-face-header">
                   <div class="card-tag-group">
                     <span class="badge-cat">${escapeHtml(currentCard.cat)}</span>
+                    ${isPlain ? '<span class="badge-plain-mode">通俗</span>' : ''}
                     ${currentCard.en ? '<span class="badge-en">EN 答案</span>' : ''}
                   </div>
                   <div>
@@ -576,13 +730,31 @@
                 <div class="card-body">
                   <div class="card-answer-scroll">
                     <div class="card-answer">
-                      ${parseMarkdown(currentCard.a)}
+                      ${isPlain ? `
+                        <div class="badge-plain-mode-banner">
+                          <span>🌱 人话拆解版</span>
+                        </div>
+                      ` : ''}
+                      ${parseMarkdown(isPlain ? (currentCard.ap || currentCard.a) : currentCard.a)}
                     </div>
-                    ${currentCard.tip ? `
-                      <div class="card-tip-box">
-                        <strong>💡 考察点与追问提示：</strong>${escapeHtml(currentCard.tip)}
-                      </div>
-                    ` : ''}
+                    ${isPlain ? `
+                      ${(currentCard.tipp || currentCard.tip) ? `
+                        <div class="card-tip-box plain-tip-box">
+                          ${escapeHtml(currentCard.tipp || currentCard.tip)}
+                        </div>
+                      ` : ''}
+                    ` : `
+                      ${currentCard.tip ? `
+                        <div class="card-tip-box">
+                          <strong>💡 考察点与追问提示：</strong>${escapeHtml(currentCard.tip)}
+                        </div>
+                      ` : ''}
+                    `}
+                    <div class="card-mode-toggle-bar">
+                      <button type="button" class="btn-toggle-card-mode" data-switch-to="${isPlain ? 'pro' : 'plain'}">
+                        🔄 换看${isPlain ? '专业版' : '通俗版'}回答
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -626,6 +798,10 @@
   }
 
   function attachCardEvents(filtered, deckSlug) {
+    bindModeSwitcherEvents(() => {
+      renderFlashcardsView(deckSlug);
+    });
+
     const cardScene = document.getElementById('card-scene');
     const cardInner = document.getElementById('card-inner');
     const btnPrev = document.getElementById('btn-prev');
@@ -635,6 +811,7 @@
     const btnShuffle = document.getElementById('btn-shuffle');
     const btnToggleUnknown = document.getElementById('btn-toggle-unknown');
     const btnClearFilter = document.getElementById('btn-clear-filter');
+    const btnToggleCardMode = appEl.querySelector('.btn-toggle-card-mode');
 
     // Category chips click
     const chips = appEl.querySelectorAll('.chip-btn[data-cat]');
@@ -682,10 +859,25 @@
       };
     }
 
+    if (btnToggleCardMode) {
+      btnToggleCardMode.onclick = function (e) {
+        e.stopPropagation();
+        const targetMode = this.getAttribute('data-switch-to');
+        if (targetMode) {
+          setMode(targetMode);
+          isFlipped = true; // In-place toggle: keep flipped!
+          renderFlashcardsView(deckSlug);
+        }
+      };
+    }
+
     // Flip Card Click
     if (cardScene) {
       cardScene.onclick = function (e) {
-        // Don't flip if user clicked inside answer scrollbar or selected text
+        // Don't flip if user clicked mode switcher or toggle button or selected text
+        if (e.target.closest('.btn-toggle-card-mode') || e.target.closest('.mode-switcher')) {
+          return;
+        }
         if (window.getSelection && window.getSelection().toString().length > 0) {
           return;
         }
