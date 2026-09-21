@@ -1,0 +1,16 @@
+{
+  "name": "秋招面试备战 · 闪卡",
+  "short_name": "面试闪卡",
+  "description": "物流管理 2027 届 8 个目标岗位秋招面试备战闪卡",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

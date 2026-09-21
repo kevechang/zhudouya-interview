@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f1f5f9"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  
+  <!-- App Icon Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Background Card -->
+  <rect x="160" y="90" width="220" height="300" rx="24" fill="#ffffff" opacity="0.35" transform="rotate(12 270 240)"/>
+  
+  <!-- Front Card with Shadow -->
+  <rect x="136" y="116" width="240" height="310" rx="24" fill="url(#cardGrad)" filter="url(#shadow)"/>
+  
+  <!-- Card Header Indicator -->
+  <rect x="168" y="152" width="64" height="12" rx="6" fill="#e0e7ff"/>
+  <circle cx="340" cy="158" r="8" fill="#10b981"/>
+  
+  <!-- Card Content Lines -->
+  <rect x="168" y="188" width="176" height="16" rx="8" fill="#334155"/>
+  <rect x="168" y="218" width="132" height="12" rx="6" fill="#64748b"/>
+  <rect x="168" y="242" width="150" height="12" rx="6" fill="#94a3b8"/>
+  
+  <!-- Flash Lightning Accent -->
+  <path d="M268 280 L232 344 L260 344 L244 400 L292 328 L264 328 Z" fill="#f59e0b" filter="url(#shadow)"/>
+</svg>

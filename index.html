@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>秋招面试备战 · 供应链/跨境电商</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <!-- Main Application Container -->
+  <div id="app"></div>
+
+  <!-- In-page Custom Modal Dialog (Avoids window.confirm) -->
+  <div class="modal-overlay" id="modal-dialog" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h3 class="modal-title" id="modal-title">提示</h3>
+      <p class="modal-msg" id="modal-msg">确定执行该操作吗？</p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" id="modal-btn-cancel">取消</button>
+        <button class="modal-btn modal-btn-confirm" id="modal-btn-confirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data and Application Scripts -->
+  <script src="./data/companies.js"></script>
+  <script src="./data/cards-common.js"></script>
+  <script src="./data/cards-bambu.js"></script>
+  <script src="./data/cards-dh.js"></script>
+  <script src="./data/cards-yueteng-plan.js"></script>
+  <script src="./data/cards-xinyameiyun.js"></script>
+  <script src="./data/cards-sunwoda.js"></script>
+  <script src="./data/cards-yueteng-buy.js"></script>
+  <script src="./data/cards-yueteng-product.js"></script>
+  <script src="./data/cards-moluo.js"></script><script src="./js/app.js"></script>
+</body>
+</html>
